@@ -1,17 +1,23 @@
-a = imread("AI_Obama.jpg");
-b = imread("Real Obama.jpg");
-b = imcrop(b,[133.5 42.5 295 332]);
-%obama [133.5 42.5 295 332]
-%Shakira [137.5 7.5 220 218]
+close all;
+
+Person = 'Shakira';
+PATH = 'images\';
+a = imread(append(PATH,'AI ',Person,'.jpg'));
+b = imread(append(PATH,'Real ',Person,'.jpg'));
+% b = imcrop(b,[133.5 42.5 295 332]); %obama
+b = imcrop(b,[137.5 7.5 220 218]); %Shakira
 
 % Resize both images to 500x500
-a_resized = imresize(a,[100,100]);
-b_resized = imresize(b,[100,100]);
+a_resized = imresize(a,[255,255]);
+b_resized = imresize(b,[255,255]);
 
 % Define parameters for sharpness
-sharpness_radius = [2,10];
-sharpness_amount = [5,50];
-threshold_amount = [.2,.8];
+sharpness_radius = [2];
+sharpness_amount = [50];
+threshold_amount = [.8];
+
+%edge detection params
+edge_thresh = 0.0016;
 
 % Loop through each combination of parameters
 for radius = sharpness_radius
@@ -26,8 +32,8 @@ for radius = sharpness_radius
             gray_b = rgb2gray(sharp_b);
             
             % Part C: Apply edge detection
-            e_a = edge(gray_a, 'log', 0.06);
-            e_b = edge(gray_b, 'log', 0.06);
+            e_a = edge(gray_a, 'log', edge_thresh);
+            e_b = edge(gray_b, 'log', edge_thresh);
             
             % Create a new figure with maximum size
             fig = figure('units','normalized','outerposition',[0 0 1 1]);
@@ -39,7 +45,7 @@ for radius = sharpness_radius
             
             subplot(1,2,2);
             imshow(e_b);
-            title(sprintf('Image A: Radius=%d, Amount=%d,threshold=%d', radius, amount,threshold));
+            title(sprintf('Image B: Radius=%d, Amount=%d,threshold=%d', radius, amount,threshold));
         end
     end
 end
