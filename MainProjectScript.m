@@ -2,7 +2,6 @@
 directory = 'path/to/your/photos/directory';
 
 
-
 function resize_images(directory, image_size_arr)
     % List all JPEG files in the directory
     fileList = dir(fullfile(directory, '*.jpg'));
