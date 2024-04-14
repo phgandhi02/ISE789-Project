@@ -1,5 +1,5 @@
 %% Script initialization
-clear;clc;
+clear;clc;close all;
 addpath("C:\Users\pyrus\OneDrive - North Carolina State University\School\College\Senior\Spring 2024\ISE 789\Project\ISE789-Project\tensor_toolbox-v3.6")
 
 
