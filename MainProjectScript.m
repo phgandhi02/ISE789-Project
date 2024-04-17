@@ -1,6 +1,7 @@
 %% Script initialization
-clear;clc;close all;
-addpath("C:\Users\pyrus\OneDrive - North Carolina State University\School\College\Senior\Spring 2024\ISE 789\Project\ISE789-Project\tensor_toolbox-v3.6")
+%clear;clc;
+close all;
+addpath("C:\Users\pyrus\OneDrive - North Carolina State University\School\College\Senior\Spring 2024\ISE 789\tensor_toolbox-v3.6")
 
 
 Real_Images_Dir = 'ISE789_images';
@@ -17,11 +18,11 @@ if size(imread(fullfile(Real_Images_Dir,Real_im_list(1).name))) ~= size(imread(f
     if any([Real_im_list.name] ~= [AI_im_list.name])
         disp('There is a difference in the image directories.')
         % Get the names of files in directory 2
-        fileNames2 = {AI_im_list.name};
+        AI_listnames = {AI_im_list.name};
         % Loop through files in directory 1
         for i = 1:numel(Real_im_list)
             % Check if the current file in directory 1 exists in directory 2
-            if ~ismember(Real_im_list(i).name, fileNames2)
+            if ~ismember(Real_im_list(i).name, AI_listnames)
                 % If the file doesn't exist in directory 2, delete it
                 delete(fullfile(Real_Images_Dir, Real_im_list(i).name));
                 disp(['Deleted: ' Real_im_list(i).name]);
@@ -41,20 +42,30 @@ if size(imread(fullfile(Real_Images_Dir,Real_im_list(1).name))) ~= size(imread(f
     end
 end
 
+Real_Image_mat = Images2Matrix(Real_Images_Dir);
+AI_Image_mat = Images2Matrix(AI_Images_Dir);
+
 % Loop through each image and add it to the matrix
 i = 1;
-imageName = fullfile(Real_Images_Dir, fileList(i).name);
+imageName = fullfile(Real_Images_Dir, Real_im_list(i).name);
 imageMatrix = imread(imageName);
-image_tensor = cp_als(tensor(double(imageMatrix)),3);
-
-%Real_Image_mat = Images2Matrix(Real_Images_Dir);
-%AI_Image_mat = Images2Matrix(AI_Images_Dir);
+Real_image_tensor = cp_als(tensor(double(Real_Image_mat)),4);
+AI_image_tensor = cp_als(tensor(double(AI_Image_mat)),4);
 %%
-image_vecs = tenmat(Real_Image_mat,4);
+vizopts1 = {'PlotCommands',{'bar','bar','bar','bar'},...
+    'ModeTitles',{'Rows','Columns','RBG','Images'},...
+    'BottomSpace',.1,'HorzSpace',.04,'Normalize',0};
+info1 = viz(Real_image_tensor,'Figure',1,vizopts1{:});
+%%
+vizopts2 = {'PlotCommands',{'bar','bar','bar','bar'},...
+    'ModeTitles',{'Rows','Columns','RBG','Images'},...
+    'BottomSpace',.1,'HorzSpace',.04,'Normalize',0};
+info2 = viz(AI_image_tensor,'Figure',1,vizopts2{:});
+%%
+Real_Image_vecs = tenmat(Real_Image_mat,4);
+AI_Image_vecs = tenmat(AI_Image_mat,4);
 
-image_vec1 = tenmat(double(set2),3); %correct because it's a vector for each image
-image_vec2 = tenmat(double(setB),3); %correct because it's a vector for each image
-lambda_new = zeros(size(image_vec1,1),3);
+lambda_new = zeros(size(image_vec,1),3);
 err = zeros(size(estimation_set,1),1);
 err_LLS = zeros(size(estimation_set,1),1);
 
