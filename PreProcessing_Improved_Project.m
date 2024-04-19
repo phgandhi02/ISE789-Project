@@ -35,9 +35,9 @@ for i = 1:numel(image_files)
                 e_a = edge(gray_a, 'log', 0.016);
                 figure
                 imshow(e_a)
-                % Save the edge-detected data as a CSV file
-                csv_filename = fullfile(folder_path, sprintf('%s_sharpness_%d_amount_%d_threshold_%.2f.csv', image_name(1:end-4), radius, amount, threshold));
-                csvwrite(csv_filename, e_a);
+                % % Save the edge-detected data as a CSV file
+                % csv_filename = fullfile(folder_path, sprintf('%s_sharpness_%d_amount_%d_threshold_%.2f.csv', image_name(1:end-4), radius, amount, threshold));
+                % csvwrite(csv_filename, e_a);
             end
         end
     end

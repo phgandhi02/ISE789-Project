@@ -1,5 +1,5 @@
 %% Script initialization
-%clear;clc;
+clear;clc;
 close all;
 addpath("C:\Users\pyrus\OneDrive - North Carolina State University\School\College\Senior\Spring 2024\ISE 789\tensor_toolbox-v3.6")
 
@@ -30,7 +30,8 @@ if size(imread(fullfile(Real_Images_Dir,Real_im_list(1).name))) ~= size(imread(f
                 % Read the image
                 img = imread(fullfile(AI_Images_Dir, Real_im_list(i).name));
                 
-                % Check if the sum of the image array is zero
+                % Check if the sum of the image array is zero to see if the
+                % images returned as NSFW.
                 if sum(img(:)) == 0
                     % If the sum is zero, delete the image
                     delete(fullfile(Real_Images_Dir, Real_im_list(i).name));
@@ -42,28 +43,30 @@ if size(imread(fullfile(Real_Images_Dir,Real_im_list(1).name))) ~= size(imread(f
     end
 end
 
+
 Real_Image_mat = Images2Matrix(Real_Images_Dir);
 AI_Image_mat = Images2Matrix(AI_Images_Dir);
 
+%% CP decomposition
 % Loop through each image and add it to the matrix
 i = 1;
 imageName = fullfile(Real_Images_Dir, Real_im_list(i).name);
 imageMatrix = imread(imageName);
-Real_image_tensor = cp_als(tensor(double(Real_Image_mat)),4);
-AI_image_tensor = cp_als(tensor(double(AI_Image_mat)),4);
+Real_image_tensor = cp_als(tensor(double(Real_Image_mat(:,:,1))),2);
+AI_image_tensor = cp_als(tensor(double(AI_Image_mat(:,:,1))),2);
 %%
-vizopts1 = {'PlotCommands',{'bar','bar','bar','bar'},...
-    'ModeTitles',{'Rows','Columns','RBG','Images'},...
+vizopts = {'PlotCommands',{'bar','bar'},...
+    'ModeTitles',{'Rows','Columns'},...
     'BottomSpace',.1,'HorzSpace',.04,'Normalize',0};
-info1 = viz(Real_image_tensor,'Figure',1,vizopts1{:});
+info1 = viz(Real_image_tensor,'Figure',1,vizopts{:});
 %%
-vizopts2 = {'PlotCommands',{'bar','bar','bar','bar'},...
-    'ModeTitles',{'Rows','Columns','RBG','Images'},...
+vizopts = {'PlotCommands',{'bar','bar'},...
+    'ModeTitles',{'Rows','Columns'},...
     'BottomSpace',.1,'HorzSpace',.04,'Normalize',0};
-info2 = viz(AI_image_tensor,'Figure',1,vizopts2{:});
+info2 = viz(AI_image_tensor,'Figure',1,vizopts{:});
 %%
-Real_Image_vecs = tenmat(Real_Image_mat,4);
-AI_Image_vecs = tenmat(AI_Image_mat,4);
+Real_Image_vecs = tenmat(Real_Image_mat,1);
+AI_Image_vecs = tenmat(AI_Image_mat,1);
 
 lambda_new = zeros(size(image_vec,1),3);
 err = zeros(size(estimation_set,1),1);
@@ -134,19 +137,46 @@ function imageMatrix = Images2Matrix(directory)
     numImages = numel(fileList);
     firstImage = imread(fullfile(directory, fileList(1).name)); % Read the first image to get dimensions
     [m, n, ~] = size(firstImage);
-    imageMatrix = zeros(m, n, 3, numImages, 'uint8'); % Assuming 8-bit images
+    imageMatrix = zeros(m, n, numImages, 'uint8'); % Assuming 8-bit gray images
     
     % Loop through each image and add it to the matrix
     for i = 1:numImages
         imageName = fullfile(directory, fileList(i).name);
-        imageMatrix(:, :, :, i) = imread(imageName);
+        imageMatrix(:, :, i) = im_preprocessing(imread(imageName));
     end
     
     % Display the size of the resulting 3D matrix
     disp(['Size of image matrix: ' num2str(size(imageMatrix))]);
     
-    % Optionally, display the first image from the matrix
-    figure;
-    imshow(imageMatrix(:, :, :, 1));
+    % Display the first image from the matrix
+    %figure;
+    %imshow(imageMatrix(:, :, 1));
 end
 
+function processed_image = im_preprocessing(image)
+    % Define parameters for sharpness
+    radius = 2;
+    amount = 10;
+    threshold = .2;
+    % Apply sharpening 
+    sharp_im = imsharpen(image, 'Radius', radius, 'Amount', amount,'Threshold', threshold);
+    % Convert to grayscale
+    gray_im = rgb2gray(sharp_im);
+    % Apply edge detection
+    %processed_image = edge(gray_im, 'log', 0.016);
+    processed_image = sobel_operator(gray_im, 250);
+end
+
+function edge_image = sobel_operator(image,cutoff)
+    im_gray = im2gray(image);
+    [m,n] = size(im_gray); e = false(m,n);
+    op = [-1 -2 -1;
+          0 0 0;
+          1 2 1]; 
+    x_mask = op';  y_mask = op;
+    fx = imfilter(im_gray,x_mask,'replicate'); 
+    fy = imfilter(im_gray,y_mask,'replicate');
+    f = fx.*fx+fy.*fy;
+    edge_image = f;
+    edge_image(f > cutoff) = 0;
+end
