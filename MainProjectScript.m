@@ -52,8 +52,13 @@ AI_Image_mat = Images2Matrix(AI_Images_Dir);
 i = 1;
 imageName = fullfile(Real_Images_Dir, Real_im_list(i).name);
 imageMatrix = imread(imageName);
-Real_image_tensor = cp_als(tensor(double(Real_Image_mat(:,:,1))),2);
-AI_image_tensor = cp_als(tensor(double(AI_Image_mat(:,:,1))),2);
+for i=1:size(Real_Image_mat,3)
+    Real_image_tensor = cp_als(tensor(double(Real_Image_mat(:,:,i))),2);
+    AI_image_tensor = cp_als(tensor(double(AI_Image_mat(:,:,i))),2);
+    Real_lambda(:,i) = Real_image_tensor.lambda;
+    AI_lambda(:,i) = AI_image_tensor.lambda;
+end
+
 %%
 vizopts = {'PlotCommands',{'bar','bar'},...
     'ModeTitles',{'Rows','Columns'},...
@@ -64,6 +69,41 @@ vizopts = {'PlotCommands',{'bar','bar'},...
     'ModeTitles',{'Rows','Columns'},...
     'BottomSpace',.1,'HorzSpace',.04,'Normalize',0};
 info2 = viz(AI_image_tensor,'Figure',1,vizopts{:});
+%%
+figure;
+plot(log(mean(Real_lambda,1)'),'b.'); hold on;
+plot(log(mean(AI_lambda,1)'),'r');
+figure;
+plot(mean((AI_lambda - Real_lambda),1)','b.')
+%%
+% Split data into training and testing sets
+data = [Real_lambda, AI_lambda];
+labels = [zeros(size(Real_lambda,2),1); ones(size(AI_lambda,2),1)];  % make labels
+
+% Split data into training and testing sets
+cv = cvpartition(labels, 'HoldOut', .2);
+idxTrain = training(cv); % Index for training data
+dataTrain = data(idxTrain);
+labelsTrain = labels(idxTrain,:);
+idxTest = test(cv); % Index for testing data
+dataTest = data(idxTest);
+labelsTest = labels(idxTest,:);
+
+% Create and train TreeBagger model
+numTrees = 50;
+model = TreeBagger(numTrees, dataTrain, labelsTrain);
+
+% Predict labels for test data
+predictedLabels = predict(model, dataTest);
+
+% Convert predicted labels to numeric format
+predictedLabels = str2double(predictedLabels);
+
+% Evaluate confusion matrix
+C = confusionmat(labelsTest, predictedLabels);
+disp('Confusion Matrix:');
+disp(C);
+
 %%
 Real_Image_vecs = tenmat(Real_Image_mat,1);
 AI_Image_vecs = tenmat(AI_Image_mat,1);
@@ -180,3 +220,4 @@ function edge_image = sobel_operator(image,cutoff)
     edge_image = f;
     edge_image(f > cutoff) = 0;
 end
+
