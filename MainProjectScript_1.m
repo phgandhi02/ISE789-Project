@@ -1,9 +1,7 @@
 %% Script initialization
 clear;clc;
 close all;
-%%addpath("C:\Users\pyrus\OneDrive - North Carolina State University\School\College\Senior\Spring 2024\ISE 789\tensor_toolbox-v3.6")
-addpath("C:\Users\agmiran2\Downloads\tensor_toolbox-v3.6")
-addpath("C:\Users\agmiran2\Desktop")
+addpath("tensor_toolbox-v3.6")
 
 Real_Images_Dir = 'ISE789_images';
 AI_Images_Dir = 'New_Images'; % Update with the actual path to directory 2
@@ -14,12 +12,11 @@ Real_im_list = dir(fullfile(Real_Images_Dir, '*.jpg')); % Modify '*.jpg' based o
 % Get a list of files in directory 2
 AI_im_list = dir(fullfile(AI_Images_Dir, '*.jpg')); % Modify '*.jpg' based on your file extension
 
-resize_images(Real_Images_Dir,[216 176]);
-resize_images(AI_Images_Dir,[216 176]);
 
 if size(imread(fullfile(Real_Images_Dir,Real_im_list(1).name))) ~= size(imread(fullfile(AI_Images_Dir,AI_im_list(1).name)))
     resize_images(Real_Images_Dir,[216 176]);
     resize_images(AI_Images_Dir,[216 176]);
+    disp('The images are different sizes. They have been adjusted to be the same size.')
     if any([Real_im_list.name] ~= [AI_im_list.name])
         disp('There is a difference in the image directories.')
         % Get the names of files in directory 2

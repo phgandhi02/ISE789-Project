@@ -2,12 +2,11 @@
 clear;clc;
 close all;
 %change to path for Tensor Toolbox
-addpath("C:\Users\pyrus\OneDrive - North Carolina State University\School\College\Senior\Spring 2024\ISE 789\tensor_toolbox-v3.6")
-
+addpath("tensor_toolbox-v3.6")
 
 Real_Images_Dir = 'ISE789_images';
 AI_Images_Dir = 'New_Images'; % Update with the actual path to directory 2
-%% Resize the images in the directory
+%% Remove black photos and resize the images in the directories to ensure same size
 % Get a list of files in directory 1
 Real_im_list = dir(fullfile(Real_Images_Dir, '*.jpg')); % Modify '*.jpg' based on your file extension
 
