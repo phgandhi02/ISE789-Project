@@ -1,8 +1,6 @@
 %% Script initialization
+addpath("tensor_toolbox-v3.6")
 
-%%addpath("C:\Users\pyrus\OneDrive - North Carolina State University\School\College\Senior\Spring 2024\ISE 789\tensor_toolbox-v3.6")
-addpath("C:\Users\agmiran2\Downloads\tensor_toolbox-v3.6")
-addpath("C:\Users\agmiran2\Desktop")
 
 Real_Images_Dir = 'ISE789_images';
 AI_Images_Dir = 'New_Images'; % Update with the actual path to directory 2
@@ -53,13 +51,14 @@ num_images = size(Real_Image_mat, 3);
 Real_image_tensor = cell(1, num_images);
 AI_image_tensor = cell(1, num_images);
 
+for rank = 1:150
 % Loop through each image and perform Tucker decomposition
 for i = 1:num_images
     % Perform Tucker decomposition on real image tensor
-    Real_image_tensor{i} = tucker_als(tensor(double(Real_Image_mat(:,:,i))), [50, 50]);
+    Real_image_tensor{i} = tucker_als(tensor(double(Real_Image_mat(:,:,i))), [rank, rank]);
     
     % Perform Tucker decomposition on AI image tensor
-    AI_image_tensor{i} = tucker_als(tensor(double(AI_Image_mat(:,:,i))), [50, 50]);
+    AI_image_tensor{i} = tucker_als(tensor(double(AI_Image_mat(:,:,i))), [rank, rank]);
 end
 
 %%
@@ -121,44 +120,55 @@ predictedLabels = str2double(predictedLabels);
 
 % Evaluate confusion matrix
 % Compute evaluation metrics
-accuracy = sum(predictedLabels == labelsTest) / numel(labelsTest);
-confMat = confusionmat(labelsTest, predictedLabels);
-precision = confMat(2, 2) / sum(confMat(:, 2));
-recall = confMat(2, 2) / sum(confMat(2, :));
-f1Score = 2 * (precision * recall) / (precision + recall);
+accuracy(rank) = sum(predictedLabels == labelsTest) / numel(labelsTest);
+confMat(:,:,rank) = confusionmat(labelsTest, predictedLabels);
+precision(rank) = confMat(2,2,rank) / sum(confMat(:, 2,rank));
+recall(rank) = confMat(2,2,rank) / sum(confMat(2, :,rank));
+f1Score(rank) = 2 * (precision(rank) * recall(rank)) / (precision(rank) + recall(rank));
 [X,Y,T,AUC] = perfcurve(labelsTest, predictedLabels, 1);
 
-disp(['Accuracy: ' num2str(accuracy)]);
-disp(['Precision: ' num2str(precision)]);
-disp(['Recall: ' num2str(recall)]);
-disp(['F1 Score: ' num2str(f1Score)]);
-disp(['AUC-ROC: ' num2str(AUC)]);
-disp('Confusion Matrix:');
-disp(confMat);
+% disp(['Accuracy: ' num2str(accuracy)]);
+% disp(['Precision: ' num2str(precision)]);
+% disp(['Recall: ' num2str(recall)]);
+% disp(['F1 Score: ' num2str(f1Score)]);
+% disp(['AUC-ROC: ' num2str(AUC)]);
+% disp('Confusion Matrix:');
+% disp(confMat);
 %%
 
-% Combine the datasets
-new_data = [Obama_cores; AIObama_cores];
-
-% Create labels for the combined dataset
-num_real_images = size(Obama_cores, 1);
-num_ai_images = size(AIObama_cores, 1);
-new_labels = [ones(num_real_images, 1); zeros(num_ai_images, 1)];
+% % Combine the datasets
+% new_data = [Obama_cores; AIObama_cores];
+% 
+% % Create labels for the combined dataset
+% num_real_images = size(Obama_cores, 1);
+% num_ai_images = size(AIObama_cores, 1);
+% new_labels = [ones(num_real_images, 1); zeros(num_ai_images, 1)];
+% %%
+% % Predict labels for the new data using the trained model
+% predicted_labels_new = predict(model, new_data);
+% 
+% % Convert predicted labels to numeric format
+% predicted_labels_new = str2double(predicted_labels_new);
+% 
+% % Evaluate confusion matrix
+% confMat_new = confusionmat(new_labels, predicted_labels_new);
+% 
+% % Display confusion matrix
+% disp('Confusion Matrix for New Data:');
+% disp(confMat_new);
+end
 %%
-% Predict labels for the new data using the trained model
-predicted_labels_new = predict(model, new_data);
+figure;
+subplot(2,2,1);
+plot(accuracy);
+subplot(2,2,1);
+plot(Precision)
 
-% Convert predicted labels to numeric format
-predicted_labels_new = str2double(predicted_labels_new);
 
-% Evaluate confusion matrix
-confMat_new = confusionmat(new_labels, predicted_labels_new);
 
-% Display confusion matrix
-disp('Confusion Matrix for New Data:');
-disp(confMat_new);
 
-%%
+
+
 function resize_images(directory, image_size_arr)
     % List all JPEG files in the directory
     fileList = dir(fullfile(directory, '*.jpg'));
