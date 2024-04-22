@@ -1,22 +1,20 @@
 %% Script initialization
 clear;clc;
 close all;
+%change to path for Tensor Toolbox
 addpath("tensor_toolbox-v3.6")
 
 Real_Images_Dir = 'ISE789_images';
-AI_Images_Dir = 'New_Images';
-%% Resize the images in the directory
+AI_Images_Dir = 'New_Images'; % Update with the actual path to directory 2
+%% Remove black photos and resize the images in the directories to ensure same size
 % Get a list of files in directory 1
 Real_im_list = dir(fullfile(Real_Images_Dir, '*.jpg')); % Modify '*.jpg' based on your file extension
 
 % Get a list of files in directory 2
 AI_im_list = dir(fullfile(AI_Images_Dir, '*.jpg')); % Modify '*.jpg' based on your file extension
 
-
 if size(imread(fullfile(Real_Images_Dir,Real_im_list(1).name))) ~= size(imread(fullfile(AI_Images_Dir,AI_im_list(1).name)))
-    resize_images(Real_Images_Dir,[216 176]);
-    resize_images(AI_Images_Dir,[216 176]);
-    disp('The images are different sizes. They have been adjusted to be the same size.')
+    resize_images(Real_Images_Dir,[216 176]); 
     if any([Real_im_list.name] ~= [AI_im_list.name])
         disp('There is a difference in the image directories.')
         % Get the names of files in directory 2
@@ -49,60 +47,41 @@ end
 Real_Image_mat = Images2Matrix(Real_Images_Dir);
 AI_Image_mat = Images2Matrix(AI_Images_Dir);
 
-%% Tucker decomposition
-% Initialize cell arrays to store core tensors
-num_images = size(Real_Image_mat, 3);
-Real_image_tensor = cell(1, num_images);
-AI_image_tensor = cell(1, num_images);
+%% CP decomposition
+% Loop through each image and add it to the matrix
+i = 1;
+imageName = fullfile(Real_Images_Dir, Real_im_list(i).name);
+imageMatrix = imread(imageName);
+for i=1:size(Real_Image_mat,3)
+    Real_image_tensor = cp_als(tensor(double(Real_Image_mat(:,:,i))),2);
+    AI_image_tensor = cp_als(tensor(double(AI_Image_mat(:,:,i))),2);
+    Real_lambda(:,i) = Real_image_tensor.lambda;
+    AI_lambda(:,i) = AI_image_tensor.lambda;
+end
 
-% Loop through each image and perform Tucker decomposition
+%%
+vizopts = {'PlotCommands',{'bar','bar'},...
+    'ModeTitles',{'Rows','Columns'},...
+    'BottomSpace',.1,'HorzSpace',.04,'Normalize',0};
+info1 = viz(Real_image_tensor,'Figure',1,vizopts{:});
+%%
+vizopts = {'PlotCommands',{'bar','bar'},...
+    'ModeTitles',{'Rows','Columns'},...
+    'BottomSpace',.1,'HorzSpace',.04,'Normalize',0};
+info2 = viz(AI_image_tensor,'Figure',1,vizopts{:});
+%%
 figure;
-for i = 1:num_images
-    % Perform Tucker decomposition on real image tensor
-    Real_image_tensor{i} = tucker_als(tensor(double(Real_Image_mat(:,:,i))), [2, 2]);
-
-    % Perform Tucker decomposition on AI image tensor
-    AI_image_tensor{i} = tucker_als(tensor(double(AI_Image_mat(:,:,i))), [2, 2]);
-end
-
-%%
-% Initialize an empty matrix to store the flattened tensors
-num_samples = numel(Real_image_tensor);
-core_size = numel(Real_image_tensor{1}.core.data); % Assuming all core tensors have the same size
-flattened_cores = zeros(num_samples, core_size);
-
-% Flatten each tensor and store it in the matrix
-for i = 1:num_samples
-    % Extract the core tensor from the Tucker decomposition result
-    core_tensor = Real_image_tensor{i}.core;
-    % Flatten the core tensor into a row vector
-    flattened_core = reshape(core_tensor.data, 1, []);
-    % Store the flattened core tensor in the matrix
-    flattened_cores(i, :) = flattened_core;
-end
-
-% Initialize an empty matrix to store the flattened tensors
-num_samples2 = numel(AI_image_tensor);
-core_size2 = numel(AI_image_tensor{1}.core.data); % Assuming all core tensors have the same size
-flattened_cores2 = zeros(num_samples2, core_size2);
-
-% Flatten each tensor and store it in the matrix
-for i = 1:num_samples2
-    % Extract the core tensor from the Tucker decomposition result
-    core_tensor2 = AI_image_tensor{i}.core;
-    % Flatten the core tensor into a row vector
-    flattened_core2 = reshape(core_tensor2.data, 1, []);
-    % Store the flattened core tensor in the matrix
-    flattened_cores2(i, :) = flattened_core2;
-end
-
+plot(log(mean(Real_lambda,1)'),'b.'); hold on;
+plot(log(mean(AI_lambda,1)'),'r');
+figure;
+plot(mean((AI_lambda - Real_lambda),1)','b.')
 %%
 % Split data into training and testing sets
-data = [flattened_cores, flattened_cores2];
-labels = [zeros(size(Real_Image_mat,3),1); ones(size(AI_Image_mat,3),1)];  % make labels
+data = [Real_lambda, AI_lambda];
+labels = [zeros(size(Real_lambda,2),1); ones(size(AI_lambda,2),1)];  % make labels
 
 % Split data into training and testing sets
-cv = cvpartition(labels, 'HoldOut', .5);
+cv = cvpartition(labels, 'HoldOut', .2);
 idxTrain = training(cv); % Index for training data
 dataTrain = data(idxTrain);
 labelsTrain = labels(idxTrain,:);
@@ -111,7 +90,7 @@ dataTest = data(idxTest);
 labelsTest = labels(idxTest,:);
 
 % Create and train TreeBagger model
-numTrees = 1;
+numTrees = 50;
 model = TreeBagger(numTrees, dataTrain, labelsTrain);
 
 % Predict labels for test data
@@ -124,13 +103,52 @@ predictedLabels = str2double(predictedLabels);
 C = confusionmat(labelsTest, predictedLabels);
 disp('Confusion Matrix:');
 disp(C);
-figure;
-confusionchart(C)
 
-flat_avg = mean(flattened_cores,1);
-flat_avg2 = mean(flattened_cores2,1);
-figure;
-bar(flattened_cores' - flattened_cores2')
+%%
+Real_Image_vecs = tenmat(Real_Image_mat,1);
+AI_Image_vecs = tenmat(AI_Image_mat,1);
+
+lambda_new = zeros(size(image_vec,1),3);
+err = zeros(size(estimation_set,1),1);
+err_LLS = zeros(size(estimation_set,1),1);
+
+design_matrix = khatrirao(set1_B,set1_A);
+
+for im=1:size(estimation_set,1)
+    lambda_new_LLS(im,:) = estimation_set(im,:)*design_matrix;
+    err_LLS(im) = (norm(estimation_set(im,:) - ...
+        (design_matrix*lambda_new_LLS(im,:)')','fro').^2)';
+end
+
+lambda_new_set2 = lambda_new_LLS(1:25,:);
+lambda_new_setB = lambda_new_LLS(26:75,:);
+
+opt_lambda_set2 = min(lambda_new_set2);
+
+
+[muHat, sigmaHat] = normfit(lambda_new_set2);
+threshold = zeros(size(muHat,2),2);
+p = [.0167,.9];
+for i=1:size(muHat,2)
+    threshold(i,:) = icdf('Normal',p,muHat(i),sigmaHat(i));
+end
+
+threshold = threshold';
+
+prediction = zeros(size(lambda_new_setB,1),1);
+
+for i=1:size(lambda_new_setB)
+    if any(lambda_new_setB(i,:) < threshold(1,:))
+        prediction(i) = 1;
+    elseif any(lambda_new_setB(i,:) > threshold(2,:))
+        prediction(i) = 1;
+    else
+        prediction(i) = 0;
+    end
+end
+true_SetB_labels = cat(1,zeros(9,1),ones(41,1));
+C = confusionmat(prediction,true_SetB_labels);
+disp(C);
 
 %%
 function resize_images(directory, image_size_arr)
@@ -171,8 +189,8 @@ function imageMatrix = Images2Matrix(directory)
     disp(['Size of image matrix: ' num2str(size(imageMatrix))]);
     
     % Display the first image from the matrix
-    figure;
-    imshow(imageMatrix(:, :, 1));
+    %figure;
+    %imshow(imageMatrix(:, :, 1));
 end
 
 function processed_image = im_preprocessing(image)
@@ -184,10 +202,9 @@ function processed_image = im_preprocessing(image)
     sharp_im = imsharpen(image, 'Radius', radius, 'Amount', amount,'Threshold', threshold);
     % Convert to grayscale
     gray_im = rgb2gray(sharp_im);
-    processed_image = rgb2gray(sharp_im);
     % Apply edge detection
     %processed_image = edge(gray_im, 'log', 0.016);
-    %processed_image = sobel_operator(gray_im, 5);
+    processed_image = sobel_operator(gray_im, 250);
 end
 
 function edge_image = sobel_operator(image,cutoff)
@@ -203,4 +220,3 @@ function edge_image = sobel_operator(image,cutoff)
     edge_image = f;
     edge_image(f > cutoff) = 0;
 end
-
