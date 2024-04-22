@@ -4,7 +4,7 @@ close all;
 addpath("tensor_toolbox-v3.6")
 
 Real_Images_Dir = 'ISE789_images';
-AI_Images_Dir = 'New_Images'; % Update with the actual path to directory 2
+AI_Images_Dir = 'New_Images';
 %% Resize the images in the directory
 % Get a list of files in directory 1
 Real_im_list = dir(fullfile(Real_Images_Dir, '*.jpg')); % Modify '*.jpg' based on your file extension
@@ -56,12 +56,13 @@ Real_image_tensor = cell(1, num_images);
 AI_image_tensor = cell(1, num_images);
 
 % Loop through each image and perform Tucker decomposition
+figure;
 for i = 1:num_images
     % Perform Tucker decomposition on real image tensor
-    Real_image_tensor{i} = tucker_als(tensor(double(Real_Image_mat(:,:,i))), [10, 10]);
-    
+    Real_image_tensor{i} = tucker_als(tensor(double(Real_Image_mat(:,:,i))), [2, 2]);
+
     % Perform Tucker decomposition on AI image tensor
-    AI_image_tensor{i} = tucker_als(tensor(double(AI_Image_mat(:,:,i))), [10, 10]);
+    AI_image_tensor{i} = tucker_als(tensor(double(AI_Image_mat(:,:,i))), [2, 2]);
 end
 
 %%
@@ -101,7 +102,7 @@ data = [flattened_cores, flattened_cores2];
 labels = [zeros(size(Real_Image_mat,3),1); ones(size(AI_Image_mat,3),1)];  % make labels
 
 % Split data into training and testing sets
-cv = cvpartition(labels, 'HoldOut', .2);
+cv = cvpartition(labels, 'HoldOut', .5);
 idxTrain = training(cv); % Index for training data
 dataTrain = data(idxTrain);
 labelsTrain = labels(idxTrain,:);
@@ -110,7 +111,7 @@ dataTest = data(idxTest);
 labelsTest = labels(idxTest,:);
 
 % Create and train TreeBagger model
-numTrees = 50;
+numTrees = 1;
 model = TreeBagger(numTrees, dataTrain, labelsTrain);
 
 % Predict labels for test data
@@ -123,6 +124,13 @@ predictedLabels = str2double(predictedLabels);
 C = confusionmat(labelsTest, predictedLabels);
 disp('Confusion Matrix:');
 disp(C);
+figure;
+confusionchart(C)
+
+flat_avg = mean(flattened_cores,1);
+flat_avg2 = mean(flattened_cores2,1);
+figure;
+bar(flattened_cores' - flattened_cores2')
 
 %%
 function resize_images(directory, image_size_arr)
@@ -163,8 +171,8 @@ function imageMatrix = Images2Matrix(directory)
     disp(['Size of image matrix: ' num2str(size(imageMatrix))]);
     
     % Display the first image from the matrix
-    %figure;
-    %imshow(imageMatrix(:, :, 1));
+    figure;
+    imshow(imageMatrix(:, :, 1));
 end
 
 function processed_image = im_preprocessing(image)
@@ -176,9 +184,10 @@ function processed_image = im_preprocessing(image)
     sharp_im = imsharpen(image, 'Radius', radius, 'Amount', amount,'Threshold', threshold);
     % Convert to grayscale
     gray_im = rgb2gray(sharp_im);
+    processed_image = rgb2gray(sharp_im);
     % Apply edge detection
     %processed_image = edge(gray_im, 'log', 0.016);
-    processed_image = sobel_operator(gray_im, 250);
+    %processed_image = sobel_operator(gray_im, 5);
 end
 
 function edge_image = sobel_operator(image,cutoff)
